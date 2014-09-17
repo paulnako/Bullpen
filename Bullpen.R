@@ -1,5 +1,7 @@
 setwd("~/Desktop/R/Baseball/Bullpen")
 require("nlme")
+require("lattice")
+require("latticeExtra")
 
 ###Load and pre-process 2011-2014 PECOTA projections
 
@@ -57,10 +59,13 @@ currentregression <- lm(data$FIPminus ~ data$pLI)
 ###Create model of optimum bullpen usage for each team
 optimal <- with(data, as.data.frame(cbind(as.character(TEAM), FIPminus, pLI)))
 colnames(optimal) <- c("TEAM", "FIPminus", "pLI")
+
 optimal <- with(optimal, optimal[order(TEAM, FIPminus),])
+
 optimal2 <- with(optimal, optimal[order(TEAM, pLI, decreasing = TRUE),])
 optimal2$pLI <- as.numeric(as.character(optimal2$pLI))
 optimal2 <- optimal2[order(optimal2$TEAM, -optimal2$pLI),]
+
 optimal$pLI <- optimal2$pLI
 optimal$FIPminus <- as.numeric(as.character(optimal$FIPminus))
 
@@ -74,7 +79,33 @@ teamrmse <- aggregate((data$FIPminus - data$predFIPminus)^2,
                        by = list(data$TEAM), FUN = mean)
 teamrmse$x<- sqrt(teamrmse$x)
 colnames(teamrmse) <- c("TEAM", "RMSE")
-teamrmse[order(-teamrmse[,2], decreasing = TRUE), ]
+teamrmse <- teamrmse[order(-teamrmse[,2], decreasing = TRUE), ]
+teamrmse
 
+###Plots
+
+####Blue Jays
+jays <- xyplot(data$FIPminus[data$TEAM == "Blue Jays"] ~ 
+                 data$pLI[data$TEAM == "Blue Jays"], type = c("p", "r"), xlab = "pLI",
+                 ylab = "ProjFIP", main = "Toronto Blue Jays Bullpen Usage 2011-2014",
+                 panel=function(x, y, ...) {
+                 panel.xyplot(x, y, ...);
+                 ltext(x=x, y=y, labels=data$NAME[data$TEAM == "Blue Jays"], 
+                       pos=1, cex=0.8)})
+
+optijays <- xyplot(FIPminus[TEAM == "Blue Jays"] ~ pLI[TEAM == "Blue Jays"], data = optimal,
+                   type = "r", col = "red")
+jays + optijays
+
+####All Teams
+
+allteams <- xyplot(data$FIPminus ~ data$pLI | data$TEAM, 
+                      xlab = "Leverage Index Entering Game", 
+                      ylab = "Preseason Projected FIP", type = c("p", "r"))
+
+optiallteams <- xyplot(optimal$FIPminus ~ optimal$pLI | data$TEAM, 
+                       type = "r", col = "red")
+
+allteams + optiallteams
 
 
